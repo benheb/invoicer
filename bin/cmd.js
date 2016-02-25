@@ -56,7 +56,7 @@ function readJSON (cfg) {
         var expenses = require(path.resolve(argv.e));
         return withConfig(require(configFile), expenses);
     }
-    
+
     process.stdin.pipe(concat(function (body) {
         var expenses = JSON.parse(body);
         withConfig(require(configFile), expenses);
@@ -87,7 +87,7 @@ function withConfig (cfg, expenses) {
         ));
         return;
     }
-    
+
     var params = {
         id: sprintf('%05d', cfg.id ++),
         name: cfg.name,
@@ -100,8 +100,7 @@ function withConfig (cfg, expenses) {
                 acc.push('{\\bf ' + title + '} & ');
                 row.hours.forEach(function (r) {
                     acc.push(
-                        strftime('%F', new Date(r.date))
-                        + ' & ' + r.hours + 'h * ' + row.rate
+                        r.date + ' & ' + r.hours + 'h * ' + row.rate
                     );
                 });
             }
@@ -116,7 +115,7 @@ function withConfig (cfg, expenses) {
                 acc.push('{\\bf ' + row.title + '} & ' + row.amount);
             }
             return acc;
-            
+
         }, []).join(' \\\\\n') + ' \\\\\n',
         totals: (function () {
             var hours = 0;
@@ -126,12 +125,12 @@ function withConfig (cfg, expenses) {
                 });
             });
             hours = round(hours, 100);
-            
+
             var rates = Object.keys(expenses.reduce(function (acc, row) {
                 if (row.rate) acc[row.rate] = true;
                 return acc;
             }, {}));
-            
+
             var amount = round(expenses.reduce(function (acc, row) {
                 if (row.hours) {
                     acc += row.rate * row.hours.reduce(function (h, r) {
@@ -148,7 +147,7 @@ function withConfig (cfg, expenses) {
                 }
                 return acc;
             }, 0), 100) + ' ' + cfg.currency;
-            
+
             return [
                 hours && ('{\\bf Total Hours} & {\\bf ' + hours + '}'),
                 hours && ('{\\bf Hourly Rate} & {\\bf '
@@ -158,32 +157,32 @@ function withConfig (cfg, expenses) {
             ].filter(Boolean).join(' \\\\\n') + ' \\\\\n';
         })()
     };
-    
+
     var output = texsrc.replace(
         /(?!\\)\${([^}]+)}/g,
         function (_, key) { return params[key] }
     );
-    
+
     var tmpdir = path.join(os.tmpdir(), 'invoicer-' + Math.random());
     mkdirp.sync(tmpdir);
-    
+
     if (/\.tex$/.test(outfile)) {
         return fs.writeFileSync(outfile, output);
     }
-    
+
     fs.writeFileSync(path.join(tmpdir, 'invoice.tex'), output);
-    
+
     var args = [ '-interaction', 'nonstopmode', '-halt-on-error', 'invoice.tex' ];
     var ps = spawn('pdflatex', args, { cwd: tmpdir });
-    
+
     var stderr = '';
     ps.stdout.on('data', function (buf) { stderr += buf });
-    
+
     if (argv.v) {
         ps.stdout.pipe(process.stdout);
     }
     ps.stderr.pipe(process.stderr);
-    
+
     ps.on('exit', function (code) {
         if (code !== 0) {
             console.error(stderr);
@@ -194,7 +193,7 @@ function withConfig (cfg, expenses) {
             .pipe(fs.createWriteStream(outfile))
         ;
     });
-    
+
     writeConfig(cfg);
 }
 
@@ -207,12 +206,12 @@ function prompter (cb) {
     var cfg = {};
     console.log('Gathering configuration options.');
     console.log('Use \\n to denote line-breaks.');
-    
+
     var field = fields.shift();
     process.stdout.write('  ' + field + '> ');
     process.stdin.pipe(split()).pipe(through2(function (line, enc, next) {
         cfg[field] = line.toString('utf8').replace(/\\n/g, '\n');
-        
+
         if (fields.length === 0) {
             cb(null, cfg);
             process.stdin.end();
@@ -228,7 +227,7 @@ function prompter (cb) {
 function usage (code) {
     var rs = fs.createReadStream(__dirname + '/usage.txt');
     rs.pipe(process.stdout);
-    
+
     rs.on('close', function () {
         if (code !== 0) process.exit(code);
     });
